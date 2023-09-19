@@ -1,5 +1,6 @@
 from litellm import completion
 
+
 class ChatHandler:
     def __init__(self, article):
         self.state = "AWAITING_USER_COMMENT"
@@ -8,7 +9,7 @@ class ChatHandler:
         self.messages = [
             {
                 "role": "system",
-                "content": f"A reader has read the following article, and will provide a comment\n\nArticle: {self.article}"
+                "content": f"A reader has read the following article, and will provide a comment\n\nArticle: {self.article}",
             }
         ]
         self.user_prompt = "Please provide a comment on the article."
@@ -19,29 +20,23 @@ class ChatHandler:
             "article": self.article,
             "latest_comment": self.latest_comment,
             "messages": self.messages,
-            "user_prompt": self.user_prompt
+            "user_prompt": self.user_prompt,
         }
 
     @classmethod
     def from_dict(cls, data):
-        chat = cls(data['article'])
-        chat.state = data['state']
-        chat.latest_comment = data.get('latest_comment')
-        chat.messages = data.get('messages', [])
-        chat.user_prompt = data.get('user_prompt')
+        chat = cls(data["article"])
+        chat.state = data["state"]
+        chat.latest_comment = data.get("latest_comment")
+        chat.messages = data.get("messages", [])
+        chat.user_prompt = data.get("user_prompt")
         return chat
 
     def add_message(self, role, content):
-        self.messages.append({
-            "role": role,
-            "content": content
-        })
+        self.messages.append({"role": role, "content": content})
 
     def assistant_reply(self):
-        res = completion(
-            model="gpt-4",
-            messages=self.messages
-        )
+        res = completion(model="gpt-4", messages=self.messages)
         content = res.choices[0].message.content.strip()
         self.add_message("assistant", content)
         return content
@@ -59,7 +54,10 @@ class ChatHandler:
     def process_latest_comment(self):
         self.add_message("user", self.latest_comment)
 
-        self.add_message("system", "Do you believe that this represents a complete opinion, or is there more detail to be extracted? Are there any misunderstandings by the user? If there is more detail to be extracted or something to be probed, ask the question that will extract it in the style of a radio talk show host -- and keep the question succinct. If not, reply DONE.")
+        self.add_message(
+            "system",
+            "Do you believe that this represents a complete opinion, or is there more detail to be extracted? Are there any misunderstandings by the user? If there is more detail to be extracted or something to be probed, ask the question that will extract it in the style of a radio talk show host -- and keep the question succinct. If not, reply DONE.",
+        )
         reply = self.assistant_reply()
 
         if reply == "DONE":
@@ -78,9 +76,14 @@ class ChatHandler:
 
     def handle_user_reply(self, user_input: str):
         self.add_message("user", user_input)
-        self.add_message("system", "Now you must articulate the user's opinion so far, in the 1st person, in a conversational manner.")
+        self.add_message(
+            "system",
+            "Now you must articulate the user's opinion so far, in the 1st person, in a conversational manner.",
+        )
         reply = self.assistant_reply()
-        self.add_message("assistant", f"I have interpreted the user's opinion so far to be: {reply}")
+        self.add_message(
+            "assistant", f"I have interpreted the user's opinion so far to be: {reply}"
+        )
 
         self.latest_comment = reply
 
@@ -88,7 +91,10 @@ class ChatHandler:
 
     def handle_awaiting_user_confirmation(self, user_input: str):
         self.add_message("user", user_input)
-        self.add_message("system", "If the user agrees with the comment, reply DONE. Otherwise, ask the user to clarify or add more detail.")
+        self.add_message(
+            "system",
+            "If the user agrees with the comment, reply DONE. Otherwise, ask the user to clarify or add more detail.",
+        )
         reply = self.assistant_reply()
 
         if reply == "DONE":

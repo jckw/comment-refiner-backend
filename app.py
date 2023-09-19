@@ -11,9 +11,11 @@ redis_db = redis.from_url(
     os.environ.get("REDIS_URL", "redis://localhost:6379"),
 )
 
+
 def save_to_redis(key, obj):
     serialized_obj = pickle.dumps(obj.to_dict())
     redis_db.set(key, serialized_obj)
+
 
 def load_from_redis(key):
     serialized_obj = redis_db.get(key)
@@ -23,7 +25,7 @@ def load_from_redis(key):
     return None
 
 
-@app.route('/refine', methods=['POST'])
+@app.route("/refine", methods=["POST"])
 def chat():
     """
     Expects a JSON object:
@@ -46,7 +48,7 @@ def chat():
             "user_prompt": "The user prompt."
         }
     """
-    chat_id = request.json.get('chat_id')
+    chat_id = request.json.get("chat_id")
 
     if chat_id:
         # If chat_id is provided, try to fetch the existing chat from Redis
@@ -56,15 +58,23 @@ def chat():
     else:
         # If no chat_id is provided, initialize a new chat
         chat_id = str(uuid.uuid4())
-        chat = ChatHandler(request.json['article'])
+        chat = ChatHandler(request.json["article"])
 
-    user_input = request.json.get('user_input')
+    user_input = request.json.get("user_input")
     if not user_input:
         return jsonify({"error": "User input is missing."}), 400
 
     chat.on_input(user_input)
     save_to_redis(chat_id, chat)
-    return jsonify({"chat_id": chat_id, **chat.to_dict()})
+    return jsonify(
+        {
+            "chat_id": chat_id,
+            "state": chat.state,
+            "latest_comment": chat.latest_comment,
+            "user_prompt": chat.user_prompt,
+        }
+    )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     app.run(debug=True, port=5000)
