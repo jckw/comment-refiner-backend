@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "refine-comment"
+version = "0.1.0"
+description = ""
+authors = ["Jack W <jackweatherilt@outlook.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+redis = "^5.0.0"
+flask = "^2.3.3"
+litellm = "^0.1.704"
+gunicorn = "^21.2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
