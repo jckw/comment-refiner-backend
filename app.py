@@ -5,12 +5,10 @@ import pickle
 import os
 from flask_cors import CORS
 from dotenv import load_dotenv
-from chat_handler import ChatHandler
-import chromadb
+from chat_handler import ChatHandler, chroma_client
 
 load_dotenv()
 
-chroma_client = chromadb.Client()
 
 STORIES = [
     {
@@ -36,7 +34,12 @@ STORIES = [
             {
                 "id": "1",
                 "text": "Beyond my initial skepticism, I don't think a robot like this can possess the full range of abilities needed to run a company effectively. One paramount quality is empathy, which isn't something I believe a robot could truly emulate. ",
+            },
+            {
+                "id": "2",
+                "text": "I think it's important to remember that robots are still in their infancy. They can't replace humans yet, but they will be able to in the future.",
             }
+
         ],
     },
     {
@@ -95,7 +98,8 @@ def chat():
         # If no chat_id is provided, initialize a new chat on the given story
         chat_id = str(uuid.uuid4())
         chat = ChatHandler(
-            article=[s for s in STORIES if s["id"] == story_id][0]["summary"]
+            article=[s for s in STORIES if s["id"] == story_id][0]["summary"],
+            comment_store=chroma_client.get_collection(story_id),
         )
 
     user_input = request.json.get("user_input")

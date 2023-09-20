@@ -1,8 +1,10 @@
 from litellm import completion
+import chromadb
 
+chroma_client = chromadb.Client()
 
 class ChatHandler:
-    def __init__(self, article):
+    def __init__(self, article, comment_store):
         self.state = "AWAITING_USER_COMMENT"
         self.article = article
         self.latest_comment = None
@@ -13,6 +15,7 @@ class ChatHandler:
             }
         ]
         self.user_prompt = "Please provide a comment on the article."
+        self.comment_store = comment_store
 
     def to_dict(self):
         return {
@@ -21,11 +24,15 @@ class ChatHandler:
             "latest_comment": self.latest_comment,
             "messages": self.messages,
             "user_prompt": self.user_prompt,
+            "comment_store_name": self.comment_store.name,
         }
 
     @classmethod
     def from_dict(cls, data):
-        chat = cls(data["article"])
+        comment_store = chroma_client.get_collection(
+            data["comment_store_name"]
+        )
+        chat = cls(data["article"], comment_store)
         chat.state = data["state"]
         chat.latest_comment = data.get("latest_comment")
         chat.messages = data.get("messages", [])
@@ -64,11 +71,18 @@ class ChatHandler:
             return self.latest_comment
 
     def process_latest_comment(self):
-        self.add_message("user", self.latest_comment)
-
         self.add_message(
             "system",
-            "Do you believe that this represents a complete opinion, or is there more detail to be extracted? Are there any misunderstandings by the user? If there is more detail to be extracted or something to be probed, ask the question that will extract it in the style of a radio talk show host -- and keep the question succinct. If not, reply DONE.",
+            " ".join("""Do you believe that this represents a complete opinion, or is
+                     there more detail to be extracted? If there are similar opinions
+                     shared by other users, we need to tell the user about these
+                     comments and ask them to distinguish their own view from them. Are
+                     there any misunderstandings by the user?
+                     If there is more detail to be extracted or something to be probed,
+                     ask the question that will extract it in the style of a radio talk
+                     show host -- and keep the question succinct. If you think you have
+                     enough of a grasp of the user's view, reply DONE.
+                     """ .replace("\n", " ").split())
         )
 
         buffer = ""
@@ -98,6 +112,7 @@ class ChatHandler:
 
     def handle_awaiting_user_comment(self, user_input: str):
         self.latest_comment = user_input
+        self.add_message("user", self.latest_comment)
 
         for x in self.process_latest_comment():
             yield x
@@ -106,7 +121,7 @@ class ChatHandler:
         self.add_message("user", user_input)
         self.add_message(
             "system",
-            "Now you must articulate the user's opinion so far, in the 1st person, in a conversational manner.",
+            "Now you must articulate the user's opinion so far, in the 1st person, in a conversational manner, in the present tense.",
         )
 
         reply = ""
@@ -116,6 +131,16 @@ class ChatHandler:
         self.add_message(
             "assistant", "I have interpreted the user's opinion so far to be: " + reply
         )
+
+        # Search comments for similar ones
+        similar_comments = self.comment_store.query(query_texts=[reply], n_results=2)
+        relevant_comments = list(filter(lambda pair: pair[0] < 0.9,  zip(similar_comments["distances"][0], similar_comments["documents"][0])))
+
+        if len(relevant_comments) > 0:
+            print(relevant_comments)
+            self.add_message(
+                "system", "Other users have said the following: " + "\n".join(pair[1] for pair in relevant_comments) + "\nThe user may want to clarify or add more detail. Assume they are unaware of the other comments"
+            )
 
         self.latest_comment = reply
 
