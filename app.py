@@ -16,14 +16,37 @@ STORIES = [
         "topic": "Google",
         "title": "Google's Bard AI chatbot will expand integrations",
         "summary": "- Google's Bard AI chatbot can now work with Gmail, Docs, and Drive. It can extract and organize helpful information when asked.\n- Some people are worried about privacy with this new feature. However, Google promises that personal data will not be used to train Bard's public model or be seen by human reviewers.\n- Bard's extensions also link with Maps, YouTube, and Google Flights. This allows it to provide real-time flight information, local attractions, and relevant videos.\n- Google plans to expand Bard's capabilities to more products, both within and outside of Google. The goal is to integrate personal data in a secure and reliable way.",
-        "comments": [],
+        "comments": [
+            # a comment that agrees with the article in a positive way
+            {
+                "id": "1",
+                "text": "I think this is a great idea. I'm excited to see what other products Bard will be able to integrate with in the future. There are some privacy concerns, but I think Google will be able to address them.",
+            },
+            {
+                "id": "2",
+                "text": "I'm quite worried about the privacy concerns -- Google already read all of my emails, and now we're passing that information to a chatbot that is hard to control. I don't think this is a good idea.",
+            },
+            {
+                "id": "3",
+                "text": "I'm really interested in testing this out. I have been copying and pasting information from my emails into Google Docs for a while now, and this would save me a lot of time, especially when connected with artificial intelligence.",
+            }
+        ],
     },
     {
         "id": "ee17953e-0ed8-4678-b3cc-d059072ef873",
         "topic": "X",
         "title": "Elon Musk proposes monthly fee to combat bot problem on X",
         "summary": "- Elon Musk, the owner of X (formerly Twitter), has suggested implementing a small monthly fee for users to address the proliferation of bots on the social media platform.\n- Currently, the X platform only offers one subscription called Premium, which provides additional features and can cost up to $115 per year.\n- Musk's idea to charge all users could potentially lead to a decrease in the number of users and advertising revenue, which currently makes up the majority of X's income.\n- Musk made these comments during a livestreamed conversation with Israeli Prime Minister Benjamin Netanyahu, where they discussed the challenges of managing free speech and hate speech on the platform.",
-        "comments": [],
+        "comments": [
+            {
+                "id": "1",
+                "text": "I caught that chat between Musk and Netanyahu. Totally get the challenges of managing speech on these platforms. But maybe there are other ways to tackle bots without making everyone pay? Just a thought."
+            },
+            {
+                "id": "2",
+                "text": "Wait, so now I might have to pay every month just to tweet? I get the whole bot issue, but what about folks like me who've been using X for free all this time? Feels a bit out of the blue.",
+            }
+        ],
     },
     {
         "id": "40f2ca1f-194d-4303-8020-6d48de6ada02",
