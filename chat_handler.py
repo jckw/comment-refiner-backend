@@ -36,20 +36,32 @@ class ChatHandler:
         self.messages.append({"role": role, "content": content})
 
     def assistant_reply(self):
-        res = completion(model="gpt-4", messages=self.messages)
-        content = res.choices[0].message.content.strip()
+        res = completion(model="gpt-4", messages=self.messages, stream=True)
+
+        whole = ""
+        for chunk in res:
+            if chunk["choices"][0]["finish_reason"] is not None:
+                break
+            part = chunk["choices"][0]["delta"]["content"]
+            whole += part
+            yield part
+
+        content = whole.strip()
         self.add_message("assistant", content)
         return content
 
     def on_input(self, user_input: str):
         if self.state == "AWAITING_USER_COMMENT":
-            self.handle_awaiting_user_comment(user_input)
+            for x in self.handle_awaiting_user_comment(user_input):
+                yield x
         elif self.state == "AWAITING_USER_REPLY":
-            self.handle_user_reply(user_input)
+            for x in self.handle_user_reply(user_input):
+                yield x
         elif self.state == "AWAITING_USER_CONFIRMATION":
-            self.handle_awaiting_user_confirmation(user_input)
-        elif self.state == "DONE":
-            self.handle_done(user_input)
+            for x in self.handle_awaiting_user_confirmation(user_input):
+                yield x
+        elif self.state == "COMPLETE":
+            return self.latest_comment
 
     def process_latest_comment(self):
         self.add_message("user", self.latest_comment)
@@ -58,21 +70,37 @@ class ChatHandler:
             "system",
             "Do you believe that this represents a complete opinion, or is there more detail to be extracted? Are there any misunderstandings by the user? If there is more detail to be extracted or something to be probed, ask the question that will extract it in the style of a radio talk show host -- and keep the question succinct. If not, reply DONE.",
         )
-        reply = self.assistant_reply()
 
-        if reply == "DONE":
-            self.user_prompt = f"It sounds like you're saying: {self.latest_comment}. Is that right or is there anything else to add?"
-            self.add_message("assistant", self.user_prompt)
-            self.state = "AWAITING_USER_CONFIRMATION"
-            return
+        buffer = ""
+        sent_buffer = ""
+        for reply_chunk in self.assistant_reply():
+            buffer += reply_chunk
 
-        self.user_prompt = reply
-        self.state = "AWAITING_USER_REPLY"
+            # Until we know whether the reply is DONE or not, don't do anything
+            if len(buffer) < len("DONE"):
+                continue
+
+            if buffer.startswith("DONE"):
+                self.state = "AWAITING_USER_CONFIRMATION"
+                self.user_prompt = f"It sounds like you're saying: {self.latest_comment}. Is that right or is there anything else to add?"
+                self.add_message("assistant", self.user_prompt)
+                yield self.user_prompt
+                return
+
+            self.user_prompt = buffer
+            self.state = "AWAITING_USER_REPLY"
+            if sent_buffer == "":
+                sent_buffer = buffer
+                yield buffer
+            else:
+                sent_buffer = buffer
+                yield reply_chunk
 
     def handle_awaiting_user_comment(self, user_input: str):
         self.latest_comment = user_input
 
-        self.process_latest_comment()
+        for x in self.process_latest_comment():
+            yield x
 
     def handle_user_reply(self, user_input: str):
         self.add_message("user", user_input)
@@ -80,14 +108,19 @@ class ChatHandler:
             "system",
             "Now you must articulate the user's opinion so far, in the 1st person, in a conversational manner.",
         )
-        reply = self.assistant_reply()
+
+        reply = ""
+        for reply_chunk in self.assistant_reply():
+            reply += reply_chunk
+
         self.add_message(
-            "assistant", f"I have interpreted the user's opinion so far to be: {reply}"
+            "assistant", "I have interpreted the user's opinion so far to be: " + reply
         )
 
         self.latest_comment = reply
 
-        self.process_latest_comment()
+        for x in self.process_latest_comment():
+            yield x
 
     def handle_awaiting_user_confirmation(self, user_input: str):
         self.add_message("user", user_input)
@@ -95,11 +128,28 @@ class ChatHandler:
             "system",
             "If the user agrees with the comment, reply DONE. Otherwise, ask the user to clarify or add more detail.",
         )
-        reply = self.assistant_reply()
 
-        if reply == "DONE":
-            self.state = "COMPLETE"
-            return
+        buffer = ""
+        sent_buffer = ""
+        for reply_chunk in self.assistant_reply():
+            buffer += reply_chunk
 
-        self.user_prompt = reply
-        self.state = "AWAITING_USER_REPLY"
+            # Until we know whether the reply is DONE or not, don't do anything
+            if len(buffer) < len("DONE"):
+                continue
+
+            if buffer.startswith("DONE"):
+                self.state = "COMPLETE"
+                yield self.latest_comment
+                return
+
+            self.user_prompt = buffer
+            self.state = "AWAITING_USER_REPLY"
+            if sent_buffer == "":
+                sent_buffer = buffer
+                yield buffer
+            else:
+                sent_buffer = buffer
+                yield reply_chunk
+
+

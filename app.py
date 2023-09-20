@@ -1,12 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, stream_with_context
 import redis
 import uuid
 import pickle
 import os
+from flask_cors import CORS
 
 from chat_handler import ChatHandler
 
 app = Flask(__name__)
+CORS(app, origins=["http://localhost:3000", "https://comment-refiner.vercel.app"])
+
 redis_db = redis.from_url(
     os.environ.get("REDIS_URL", "redis://localhost:6379"),
 )
@@ -27,27 +30,6 @@ def load_from_redis(key):
 
 @app.route("/refine", methods=["POST"])
 def chat():
-    """
-    Expects a JSON object:
-        {
-            "article": "The article to be refined.",
-            "user_input": "The user input."
-        }
-
-    or:
-        {
-            "chat_id": "The chat ID.",
-            "user_input": "The user input."
-        }
-
-    Returns a JSON object:
-        {
-            "chat_id": "The chat ID.",
-            "state": "The state of the chat.",
-            "latest_comment": "The latest comment.",
-            "user_prompt": "The user prompt."
-        }
-    """
     chat_id = request.json.get("chat_id")
 
     if chat_id:
@@ -64,16 +46,16 @@ def chat():
     if not user_input:
         return jsonify({"error": "User input is missing."}), 400
 
-    chat.on_input(user_input)
-    save_to_redis(chat_id, chat)
-    return jsonify(
-        {
-            "chat_id": chat_id,
-            "state": chat.state,
-            "latest_comment": chat.latest_comment,
-            "user_prompt": chat.user_prompt,
-        }
-    )
+    def generate():
+        for chunk in chat.on_input(user_input):
+            save_to_redis(chat_id, chat)
+            yield '{"chat_id": "%s", "delta": "%s", "state": "%s"}' % (
+                chat_id,
+                chunk,
+                chat.state
+            )
+
+    return app.response_class(stream_with_context(generate()), mimetype="application/json")
 
 
 if __name__ == "__main__":
