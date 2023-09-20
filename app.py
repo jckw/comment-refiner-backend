@@ -4,6 +4,11 @@ import uuid
 import pickle
 import os
 from flask_cors import CORS
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 from chat_handler import ChatHandler
 
@@ -57,6 +62,26 @@ def chat():
 
     return app.response_class(stream_with_context(generate()), mimetype="application/json")
 
+
+@app.route('/news/stories', methods=['GET'])
+def get_stories():
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.environ.get('CRYPTO_BACKEND_TOKEN')}",
+    }
+
+    url = "https://crypto-backend.staging.delphia.com/news/stories"
+    response = requests.get(url, headers=headers)
+    stories = response.json()
+
+    results = []
+    # Only get the latest 4 stories
+    for story in stories['results'][:4]:
+        story_url = f"https://crypto-backend.staging.delphia.com/news/story/{story['id']}"
+        story_detail = requests.get(story_url, headers=headers).json()
+        results.append(story_detail)
+
+    return jsonify(results)
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
