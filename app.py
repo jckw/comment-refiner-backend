@@ -87,7 +87,15 @@ def prep_comment_stores():
 prep_comment_stores()
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000", "https://comment-refiner.vercel.app", "https://comment-aggro.vercel.app"])
+CORS(
+    app,
+    origins=[
+        "http://localhost:3000",
+        "https://comment-refiner.vercel.app",
+        "https://comment-aggro.vercel.app",
+        "https://comment-copilot.vercel.app",
+    ],
+)
 
 redis_db = redis.from_url(
     os.environ.get("REDIS_URL", "redis://localhost:6379"),
