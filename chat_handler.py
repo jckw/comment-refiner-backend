@@ -122,7 +122,7 @@ class ChatHandler:
 
             if buffer.startswith("DONE"):
                 self.state = "AWAITING_USER_CONFIRMATION"
-                self.user_prompt = f"It sounds like you're saying: {self.latest_comment}. Is that right or is there anything else to add?"
+                self.user_prompt = f"Okay, so what I'm hearing is: '{self.latest_comment}'. Is that right or is there anything else to add?"
                 self.add_message("assistant", self.user_prompt)
                 yield self.user_prompt
                 return
@@ -151,7 +151,7 @@ class ChatHandler:
         for reply_chunk in self.assistant_reply():
             reply += reply_chunk
 
-        self.add_message("assistant", "Okay, so what I'm hearing is: " + reply)
+        self.add_message("assistant", "My latest understanding of the user's opinion, from their perspective, is: " + reply)
 
         # Search comments for similar ones
         similar_comments = self.comment_store.query(query_texts=[reply], n_results=2)
