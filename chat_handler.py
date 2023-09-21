@@ -1,18 +1,21 @@
 from litellm import completion
 import chromadb
+import os
 
 chroma_client = chromadb.Client()
 
 
-def tidy_text(text):
-    return " ".join(text.replace("\n", " ").split())
+def tidy_text(env_var, text):
+    return os.environ.get(env_var, " ".join(text.replace("\n", " ").split()))
 
 
 INITIAL_PROMPT = tidy_text(
-    """A reader has read the following article, and will provide a comment """
+    "INTIAL_PROMPT",
+    """A reader has read the following article, and will provide a comment """,
 )
 
 OPINION_ASSESSMENT_PROMPT = tidy_text(
+    "OPINION_ASSESSMENT_PROMPT",
     """Do you believe that this represents a complete opinion, or is
     there more detail to be extracted? If there are similar opinions
     shared by other users, we need to tell the user about these
@@ -21,17 +24,19 @@ OPINION_ASSESSMENT_PROMPT = tidy_text(
     If there is more detail to be extracted or something to be probed,
     ask the question that will extract it in the style of a radio talk
     show host -- and keep the question succinct. If you think you have
-    enough of a grasp of the user's view, reply DONE."""
+    enough of a grasp of the user's view, reply DONE.""",
 )
 
 ARTICULATION_PROMPT = tidy_text(
+    """ARTICULATION_PROMPT""",
     """"Now you must articulate the user's opinion so far, in the 1st person, in a
-    conversational manner, in the present tense."""
+    conversational manner, in the present tense.""",
 )
 
 FINAL_AGREEMENT_PROMPT = tidy_text(
+    "FINAL_AGREEMENT_PROMPT",
     """If the user agrees with the comment, reply DONE. Otherwise, ask the user to
-    clarify or add more detail."""
+    clarify or add more detail.""",
 )
 
 
