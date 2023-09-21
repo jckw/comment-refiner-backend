@@ -3,6 +3,38 @@ import chromadb
 
 chroma_client = chromadb.Client()
 
+
+def tidy_text(text):
+    return " ".join(text.replace("\n", " ").split())
+
+
+INITIAL_PROMPT = tidy_text(
+    """A reader has read the following article, and will provide a comment """
+)
+
+OPINION_ASSESSMENT_PROMPT = tidy_text(
+    """Do you believe that this represents a complete opinion, or is
+    there more detail to be extracted? If there are similar opinions
+    shared by other users, we need to tell the user about these
+    comments and ask them to distinguish their own view from them. Are
+    there any misunderstandings by the user?
+    If there is more detail to be extracted or something to be probed,
+    ask the question that will extract it in the style of a radio talk
+    show host -- and keep the question succinct. If you think you have
+    enough of a grasp of the user's view, reply DONE."""
+)
+
+ARTICULATION_PROMPT = tidy_text(
+    """"Now you must articulate the user's opinion so far, in the 1st person, in a
+    conversational manner, in the present tense."""
+)
+
+FINAL_AGREEMENT_PROMPT = tidy_text(
+    """If the user agrees with the comment, reply DONE. Otherwise, ask the user to
+    clarify or add more detail."""
+)
+
+
 class ChatHandler:
     def __init__(self, article, comment_store):
         self.state = "AWAITING_USER_COMMENT"
@@ -11,7 +43,7 @@ class ChatHandler:
         self.messages = [
             {
                 "role": "system",
-                "content": f"A reader has read the following article, and will provide a comment\n\nArticle: {self.article}",
+                "content": f"{INITIAL_PROMPT}\n\nArticle: {self.article}",
             }
         ]
         self.user_prompt = "Please provide a comment on the article."
@@ -29,9 +61,7 @@ class ChatHandler:
 
     @classmethod
     def from_dict(cls, data):
-        comment_store = chroma_client.get_collection(
-            data["comment_store_name"]
-        )
+        comment_store = chroma_client.get_collection(data["comment_store_name"])
         chat = cls(data["article"], comment_store)
         chat.state = data["state"]
         chat.latest_comment = data.get("latest_comment")
@@ -73,16 +103,7 @@ class ChatHandler:
     def process_latest_comment(self):
         self.add_message(
             "system",
-            " ".join("""Do you believe that this represents a complete opinion, or is
-                     there more detail to be extracted? If there are similar opinions
-                     shared by other users, we need to tell the user about these
-                     comments and ask them to distinguish their own view from them. Are
-                     there any misunderstandings by the user?
-                     If there is more detail to be extracted or something to be probed,
-                     ask the question that will extract it in the style of a radio talk
-                     show host -- and keep the question succinct. If you think you have
-                     enough of a grasp of the user's view, reply DONE.
-                     """ .replace("\n", " ").split())
+            OPINION_ASSESSMENT_PROMPT,
         )
 
         buffer = ""
@@ -119,27 +140,30 @@ class ChatHandler:
 
     def handle_user_reply(self, user_input: str):
         self.add_message("user", user_input)
-        self.add_message(
-            "system",
-            "Now you must articulate the user's opinion so far, in the 1st person, in a conversational manner, in the present tense.",
-        )
+        self.add_message("system", ARTICULATION_PROMPT)
 
         reply = ""
         for reply_chunk in self.assistant_reply():
             reply += reply_chunk
 
-        self.add_message(
-            "assistant", "I have interpreted the user's opinion so far to be: " + reply
-        )
+        self.add_message("assistant", "Okay, so what I'm hearing is: " + reply)
 
         # Search comments for similar ones
         similar_comments = self.comment_store.query(query_texts=[reply], n_results=2)
-        relevant_comments = list(filter(lambda pair: pair[0] < 0.9,  zip(similar_comments["distances"][0], similar_comments["documents"][0])))
+        relevant_comments = list(
+            filter(
+                lambda pair: pair[0] < 0.9,
+                zip(similar_comments["distances"][0], similar_comments["documents"][0]),
+            )
+        )
 
         if len(relevant_comments) > 0:
             print(relevant_comments)
             self.add_message(
-                "system", "Other users have said the following: " + "\n".join(pair[1] for pair in relevant_comments) + "\nThe user may want to clarify or add more detail. Assume they are unaware of the other comments"
+                "system",
+                "Other users have said the following: "
+                + "\n".join(pair[1] for pair in relevant_comments)
+                + "\nThe user may want to clarify or add more detail. Assume they are unaware of the other comments",
             )
 
         self.latest_comment = reply
@@ -149,10 +173,7 @@ class ChatHandler:
 
     def handle_awaiting_user_confirmation(self, user_input: str):
         self.add_message("user", user_input)
-        self.add_message(
-            "system",
-            "If the user agrees with the comment, reply DONE. Otherwise, ask the user to clarify or add more detail.",
-        )
+        self.add_message("system", FINAL_AGREEMENT_PROMPT)
 
         buffer = ""
         sent_buffer = ""
@@ -176,5 +197,3 @@ class ChatHandler:
             else:
                 sent_buffer = buffer
                 yield reply_chunk
-
-

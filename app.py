@@ -29,7 +29,7 @@ STORIES = [
             {
                 "id": "3",
                 "text": "I'm really interested in testing this out. I have been copying and pasting information from my emails into Google Docs for a while now, and this would save me a lot of time, especially when connected with artificial intelligence.",
-            }
+            },
         ],
     },
     {
@@ -40,12 +40,12 @@ STORIES = [
         "comments": [
             {
                 "id": "1",
-                "text": "I caught that chat between Musk and Netanyahu. Totally get the challenges of managing speech on these platforms. But maybe there are other ways to tackle bots without making everyone pay? Just a thought."
+                "text": "I caught that chat between Musk and Netanyahu. Totally get the challenges of managing speech on these platforms. But maybe there are other ways to tackle bots without making everyone pay? Just a thought.",
             },
             {
                 "id": "2",
                 "text": "Wait, so now I might have to pay every month just to tweet? I get the whole bot issue, but what about folks like me who've been using X for free all this time? Feels a bit out of the blue.",
-            }
+            },
         ],
     },
     {
@@ -61,8 +61,7 @@ STORIES = [
             {
                 "id": "2",
                 "text": "I think it's important to remember that robots are still in their infancy. They can't replace humans yet, but they will be able to in the future.",
-            }
-
+            },
         ],
     },
     {
@@ -83,6 +82,7 @@ def prep_comment_stores():
                 documents=[c["text"] for c in story["comments"]],
                 ids=[c["id"] for c in story["comments"]],
             )
+
 
 prep_comment_stores()
 
